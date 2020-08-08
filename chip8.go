@@ -83,8 +83,89 @@ func (vm *chip8) clearMemory() {
 	}
 }
 
+func (vm *chip8) fetchOpcode() uint16 {
+
+	opHigh := uint16(vm.memory[vm.pc]) << 8
+	opLow := uint16(vm.memory[vm.pc+1])
+	vm.opcode = opHigh | opLow
+	vm.pc += 2
+	return vm.opcode
+
+}
+
+func (vm *chip8) step() {
+
+	instruction := vm.fetchOpcode()
+	completeByte := byte(instruction & 0xFF)
+	// nibble := instruction & 0xF
+	address := instruction & 0xFFF
+	x := byte(instruction >> 8 & 0xF) // check this later maybe will give me some errors
+	// y := byte(instruction >> 4 & 0xF)
+
+	// only used for debuggin purpose
+	debug(instruction)
+
+	switch {
+	case instruction == 0x00E0:
+		vm.cls()
+	case instruction == 0x00EE:
+		vm.ret()
+	case instruction&0xF000 == 0x1000:
+		vm.jump(address)
+	case instruction&0xF000 == 0x2000:
+		vm.call(address)
+	case instruction&0xF000 == 0x3000:
+		vm.skipIfX(x, completeByte)
+	}
+
+}
+
+// Opcode methods
+func (vm *chip8) cls() {
+	fmt.Println("Clear screen")
+}
+
+func (vm *chip8) ret() {
+	fmt.Println("Return from subroutine")
+}
+
+func (vm *chip8) jump(address uint16) {
+	fmt.Println("Jump function")
+}
+
+func (vm *chip8) call(address uint16) {
+	fmt.Println("call subroutine")
+}
+
+func (vm *chip8) skipIfX(vx byte, kk byte) {
+	fmt.Println("SkipifX")
+}
+
+func (vm *chip8) writeToMem(high byte, low byte) {
+	vm.memory[512] = high
+	vm.memory[513] = low
+}
+
 func main() {
 	chip := chip8{}
 	chip.Initialize()
+	chip.writeToMem(0x32, 0x20)
 	fmt.Println(chip)
+	chip.step()
+}
+
+// utilities functions
+func debug(instruction uint16) {
+	completeByte := instruction & 0xFF
+	nibble := instruction & 0xF
+	address := instruction & 0xFFF
+	x := instruction >> 8 & 0xF
+	y := instruction >> 4 & 0xF
+
+	fmt.Printf("Instruction: %x\n", instruction)
+	fmt.Printf("Intruction byte: %x\n", completeByte)
+	fmt.Printf("Nibble: %x\n", nibble)
+	fmt.Printf("Address: %x\n", address)
+	fmt.Printf("X: %x\n", x)
+	fmt.Printf("Y: %x\n", y)
 }
