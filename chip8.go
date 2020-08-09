@@ -97,10 +97,10 @@ func (vm *chip8) step() {
 
 	instruction := vm.fetchOpcode()
 	completeByte := byte(instruction & 0xFF)
-	// nibble := instruction & 0xF
+	nibble := byte(instruction & 0xF)
 	address := instruction & 0xFFF
 	x := byte(instruction >> 8 & 0xF) // check this later maybe will give me some errors
-	// y := byte(instruction >> 4 & 0xF)
+	y := byte(instruction >> 4 & 0xF)
 
 	// only used for debuggin purpose
 	debug(instruction)
@@ -116,6 +116,65 @@ func (vm *chip8) step() {
 		vm.call(address)
 	case instruction&0xF000 == 0x3000:
 		vm.skipIfX(x, completeByte)
+	case instruction&0xF000 == 0x4000:
+		vm.skipIfNotX(x, completeByte)
+	case instruction&0xF000 == 0x5000:
+		vm.skipIfXY(x, y)
+	case instruction&0xF000 == 0x6000:
+		vm.loadValueInX(x, completeByte)
+	case instruction&0xF000 == 0x7000:
+		vm.addValueToX(x, completeByte)
+	case instruction&0xF000 == 0x8000:
+		vm.copyYtoX(x, y)
+	case instruction&0XF00F == 0x8001:
+		vm.or(x, y)
+	case instruction&0xF00F == 0x8002:
+		vm.and(x, y)
+	case instruction&0xF00F == 0x8003:
+		vm.xor(x, y)
+	case instruction&0xF00F == 0x8004:
+		vm.add(x, y)
+	case instruction&0xF00F == 0x8005:
+		vm.subXY(x, y)
+	case instruction&0xF00F == 0x8006:
+		vm.shiftRight(x)
+	case instruction&0xF00F == 0x8007:
+		vm.subYX(x, y)
+	case instruction&0xF00F == 0x800E:
+		vm.shiftLeft(x)
+	case instruction&0xF00F == 0x9000:
+		vm.compareXY(x, y)
+	case instruction&0xF000 == 0xA000:
+		vm.setI(address)
+	case instruction&0xF000 == 0xB000:
+		vm.jumpTo(address)
+	case instruction&0xF000 == 0xC000:
+		vm.random(x, completeByte)
+	case instruction&0xF000 == 0xD000:
+		vm.showSprite(x, y, nibble)
+	case instruction&0xF0FF == 0xE09E:
+		vm.skipIfPressed(x)
+	case instruction&0xF0FF == 0xE0A1:
+		vm.skipIfNotPressed(x)
+	case instruction&0xF00F == 0xF007:
+		vm.putTimerInX(x)
+	case instruction&0xF00F == 0xF00A:
+		vm.waitForKeyPress(x)
+	case instruction&0xF0FF == 0xF015:
+		vm.setDelay(x)
+	case instruction&0xF0FF == 0xF018:
+		vm.setSound(x)
+	case instruction&0xF0FF == 0xF01E:
+		vm.addXToI(x)
+	case instruction&0xF0FF == 0xF029:
+		vm.loadF(x)
+	case instruction&0xF0FF == 0xF033:
+		vm.loadBCD(x)
+	case instruction&0xF0FF == 0xF055:
+		vm.saveRegisters(x)
+	case instruction&0xF0FF == 0xF065:
+		vm.loadRegisters(x)
+
 	}
 
 }
@@ -139,6 +198,122 @@ func (vm *chip8) call(address uint16) {
 
 func (vm *chip8) skipIfX(vx byte, kk byte) {
 	fmt.Println("SkipifX")
+}
+
+func (vm *chip8) skipIfNotX(vx byte, kk byte) {
+	fmt.Println("SkipIfNot X")
+}
+
+func (vm *chip8) skipIfXY(vx byte, vy byte) {
+	fmt.Println("SkipIfXY")
+}
+
+func (vm *chip8) loadValueInX(vx byte, kk byte) {
+	fmt.Println("Carga un valor en el registro x")
+}
+
+func (vm *chip8) addValueToX(vx byte, kk byte) {
+	fmt.Println("Add kk value to x register and result put in x")
+}
+
+func (vm *chip8) copyYtoX(vx byte, vy byte) {
+	fmt.Println("copy vy value to vx register")
+}
+
+func (vm *chip8) or(vx byte, vy byte) {
+	fmt.Println("or operation between vx and vy")
+}
+
+func (vm *chip8) and(vx byte, vy byte) {
+	fmt.Println("and operation between vx and vy")
+}
+
+func (vm *chip8) xor(vx byte, vy byte) {
+	fmt.Println("xor between vx and vy")
+}
+
+func (vm *chip8) add(vx byte, vy byte) {
+	fmt.Println("add between vx and vy")
+}
+
+func (vm *chip8) subXY(vx byte, vy byte) {
+	fmt.Println("substract vy from vx")
+}
+
+func (vm *chip8) shiftRight(vx byte) {
+	fmt.Println("Shift vx element to the right (divide by 2) ")
+}
+
+func (vm *chip8) subYX(vx byte, vy byte) {
+	fmt.Println("substract vx from vy")
+}
+
+func (vm *chip8) shiftLeft(vx byte) {
+	fmt.Println("Shift vx element to the right (divide by 2) ")
+}
+
+func (vm *chip8) compareXY(vx byte, vy byte) {
+	fmt.Println("compare x y are not equals")
+}
+
+func (vm *chip8) setI(address uint16) {
+	fmt.Println("set I register with vx value")
+}
+
+func (vm *chip8) jumpTo(address uint16) {
+	fmt.Println("jump to specified address")
+}
+
+func (vm *chip8) random(vx byte, kk byte) {
+	fmt.Println("create a random number and put it in vx")
+}
+
+func (vm *chip8) showSprite(vx byte, vy byte, nibble byte) {
+	fmt.Println("display n byte sprite starting at i memory")
+}
+
+func (vm *chip8) skipIfPressed(vx byte) {
+	fmt.Println("skip instruction if vx value is equal to keyboard pressed")
+}
+
+func (vm *chip8) skipIfNotPressed(vx byte) {
+	fmt.Println("skip instruction if vx value is not equal to keyboard pressed")
+}
+
+func (vm *chip8) putTimerInX(vx byte) {
+	fmt.Println("put value from dst register in vx")
+}
+
+func (vm *chip8) waitForKeyPress(vx byte) {
+	fmt.Println("Wait for key press, store key value in vx")
+}
+
+func (vm *chip8) setDelay(vx byte) {
+	fmt.Println("Dt is set to vx value")
+}
+
+func (vm *chip8) setSound(vx byte) {
+	fmt.Println("st is set to vx value")
+}
+
+func (vm *chip8) addXToI(vx byte) {
+	fmt.Println("vx and i are added results stored in I")
+}
+
+func (vm *chip8) loadF(vx byte) {
+	fmt.Println("i is set to the location of hexadecimal representation ofthe vx value")
+}
+
+func (vm *chip8) loadBCD(vx byte) {
+	fmt.Println("Store representation of hexadecimal vx in I")
+}
+
+func (vm *chip8) saveRegisters(vx byte) {
+	fmt.Println("store al v0 .... vx register in memory starting at I location")
+}
+
+func (vm *chip8) loadRegisters(vx byte) {
+	fmt.Println("read value from memory starting at I into register v0 through vx")
 }
 
 func (vm *chip8) writeToMem(high byte, low byte) {
