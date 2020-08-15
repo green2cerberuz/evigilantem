@@ -27,7 +27,7 @@ var hexadecimalSprites = [80]byte{
 type chip8 struct {
 	memory     [4096]byte    // 4096 or 4KB of memory from 0x0000 to 0x1000
 	v          [16]byte      // general purpose registers from v0, v1, ...., vF
-	sp         byte          // stack pointer, point to last expression inside stack
+	sp         uint          // stack pointer, point to last expression inside stack
 	i          uint16        // to store memory address
 	pc         uint16        // show the addres where actual program is
 	stack      [16]uint16    // stack, support 16 nested stack calls
@@ -35,7 +35,7 @@ type chip8 struct {
 	dt         byte          // delay timer
 	st         byte          // sound timer
 	keyboard   [16]byte      // keyboard keys goes from 0 to F
-	drawScreen bool          // flag to set when to clear and draw the screen
+	drawScreen bool          // flag to set when to clear and draw in screen
 	opcode     uint16        // current opcode
 }
 
@@ -99,10 +99,10 @@ func (vm *chip8) step() {
 	completeByte := byte(instruction & 0xFF)
 	nibble := byte(instruction & 0xF)
 	address := instruction & 0xFFF
-	x := byte(instruction >> 8 & 0xF) // check this later maybe will give me some errors
-	y := byte(instruction >> 4 & 0xF)
+	x := uint(instruction >> 8 & 0xF) // check this, later maybe will give me some errors
+	y := uint(instruction >> 4 & 0xF)
 
-	// only used for debuggin purpose
+	// only used for debugging purpose
 	debug(instruction)
 
 	switch {
@@ -181,78 +181,187 @@ func (vm *chip8) step() {
 
 // Opcode methods
 func (vm *chip8) cls() {
-	fmt.Println("Clear screen")
+	/*
+		Clear the whole display and set draw flag to true
+		to update it.
+	*/
+	vm.clearDisplay()
+	vm.drawScreen = true
+
 }
 
 func (vm *chip8) ret() {
-	fmt.Println("Return from subroutine")
+	/*
+		The interpreter sets the program counter
+		to the address at the top of the stack
+	*/
+	if int(vm.sp) == 0 {
+		fmt.Println("Stack underflow")
+	}
+	vm.sp--
+	vm.pc = vm.stack[vm.sp]
+
 }
 
 func (vm *chip8) jump(address uint16) {
-	fmt.Println("Jump function")
+	/*
+		interpreter sets the program counter to input address
+	*/
+	vm.pc = address
 }
 
 func (vm *chip8) call(address uint16) {
-	fmt.Println("call subroutine")
+	/*
+		Save current pc in stack and then jump to address
+		(call a subroutine)
+	*/
+	if int(vm.sp) > len(vm.stack) {
+		fmt.Println("Stack overflow!!!")
+	}
+	vm.stack[vm.sp] = vm.pc
+	vm.sp++
+	vm.jump(address)
 }
 
-func (vm *chip8) skipIfX(vx byte, kk byte) {
-	fmt.Println("SkipifX")
+func (vm *chip8) skipIfX(vx uint, kk byte) {
+	/*
+		The interpreter compares register Vx to kk, and if they are equal,
+		increments the program counter by 2.
+	*/
+	if vm.v[vx] == kk {
+		vm.pc += 2
+	}
 }
 
-func (vm *chip8) skipIfNotX(vx byte, kk byte) {
-	fmt.Println("SkipIfNot X")
+func (vm *chip8) skipIfNotX(vx uint, kk byte) {
+	/*
+		Compares register Vx to kk, and if they are not equal,
+		increments the program counter by 2.
+	*/
+	if vm.v[vx] != kk {
+		vm.pc += 2
+	}
 }
 
-func (vm *chip8) skipIfXY(vx byte, vy byte) {
-	fmt.Println("SkipIfXY")
+func (vm *chip8) skipIfXY(vx uint, vy uint) {
+	/*
+		Compares register Vx to register Vy, and if they are equal,
+		increments the program counter by 2.
+	*/
+	if vm.v[vx] == vm.v[vy] {
+		vm.pc += 2
+	}
 }
 
-func (vm *chip8) loadValueInX(vx byte, kk byte) {
-	fmt.Println("Carga un valor en el registro x")
+func (vm *chip8) loadValueInX(vx uint, kk byte) {
+	/*
+		Interpreter puts the value kk into register Vx.
+	*/
+	vm.v[vx] = kk
 }
 
-func (vm *chip8) addValueToX(vx byte, kk byte) {
-	fmt.Println("Add kk value to x register and result put in x")
+func (vm *chip8) addValueToX(vx uint, kk byte) {
+	/*
+		Adds the value kk to the value of register Vx, then stores the result in Vx.
+	*/
+	vm.v[vx] += kk
 }
 
-func (vm *chip8) copyYtoX(vx byte, vy byte) {
-	fmt.Println("copy vy value to vx register")
+func (vm *chip8) copyYtoX(vx uint, vy uint) {
+	/*
+		Stores the value of register Vy in register Vx.
+	*/
+	vm.v[vx] = vm.v[vy]
 }
 
-func (vm *chip8) or(vx byte, vy byte) {
-	fmt.Println("or operation between vx and vy")
+func (vm *chip8) or(vx uint, vy uint) {
+	/*
+		Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx
+	*/
+	vm.v[vx] = vm.v[vx] | vm.v[vy]
+
 }
 
-func (vm *chip8) and(vx byte, vy byte) {
-	fmt.Println("and operation between vx and vy")
+func (vm *chip8) and(vx uint, vy uint) {
+	/*
+		Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
+	*/
+	vm.v[vx] = vm.v[vx] & vm.v[vy]
+
 }
 
-func (vm *chip8) xor(vx byte, vy byte) {
-	fmt.Println("xor between vx and vy")
+func (vm *chip8) xor(vx uint, vy uint) {
+	/*
+		Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx
+	*/
+	vm.v[vx] = vm.v[vx] ^ vm.v[vy]
 }
 
-func (vm *chip8) add(vx byte, vy byte) {
-	fmt.Println("add between vx and vy")
+func (vm *chip8) add(vx uint, vy uint) {
+	/*
+		The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,)
+		VF is set to 1, otherwise 0. Only the lowest 8 bits of the result are kept, and stored in Vx.
+	*/
+
+	// if a overflow happens go already give you the lowest 8 bits of the operation
+	vm.v[vx] += vm.v[vy]
+
+	// the only way in which v[x] + v[y] is less than v[y] is in and overflow
+	// when v[x] could go from 255 to 0, 1, 3, etc
+	if vm.v[vx] < vm.v[vy] {
+		vm.v[0xF] = 1
+	} else {
+		vm.v[0xF] = 0
+	}
+
 }
 
-func (vm *chip8) subXY(vx byte, vy byte) {
-	fmt.Println("substract vy from vx")
+func (vm *chip8) subXY(vx uint, vy uint) {
+	/*
+		If Vx > Vy, then VF is set to 1, otherwise 0.
+		Then Vy is subtracted from Vx, and the results stored in Vx.
+	*/
+	if vm.v[vx] > vm.v[vy] {
+		vm.v[0xF] = 1
+	} else {
+		vm.v[0xF] = 0
+	}
+	vm.v[vx] -= vm.v[vy]
+
 }
 
-func (vm *chip8) shiftRight(vx byte) {
-	fmt.Println("Shift vx element to the right (divide by 2) ")
+func (vm *chip8) shiftRight(vx uint) {
+	/*
+		If the least-significant bit of Vx is 1,
+		then VF is set to 1, otherwise 0. Then Vx is divided by 2.
+	*/
+	vm.v[0xF] = vm.v[vx] & 0x01 // if we do a masking here is not needed to do some if to test equality
+	vm.v[vx] >>= 1
 }
 
-func (vm *chip8) subYX(vx byte, vy byte) {
-	fmt.Println("substract vx from vy")
+func (vm *chip8) subYX(vx uint, vy uint) {
+	/*
+		If Vy > Vx, then VF is set to 1, otherwise 0.
+		Then Vx is subtracted from Vy, and the results stored in Vx.
+	*/
+	if vm.v[vy] > vm.v[vx] {
+		vm.v[0x0F] = 1
+	} else {
+		vm.v[0x0F] = 0
+	}
+	vm.v[vx] = vm.v[vy] - vm.v[vx]
 }
 
-func (vm *chip8) shiftLeft(vx byte) {
-	fmt.Println("Shift vx element to the right (divide by 2) ")
+func (vm *chip8) shiftLeft(vx uint) {
+	/*
+		If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0.
+		Then Vx is multiplied by 2.
+	*/
+	vm.v[0xF] = vm.v[vx] >> 7
+	vm.v[vx] <<= 1
 }
 
-func (vm *chip8) compareXY(vx byte, vy byte) {
+func (vm *chip8) compareXY(vx uint, vy uint) {
 	fmt.Println("compare x y are not equals")
 }
 
@@ -264,55 +373,55 @@ func (vm *chip8) jumpTo(address uint16) {
 	fmt.Println("jump to specified address")
 }
 
-func (vm *chip8) random(vx byte, kk byte) {
+func (vm *chip8) random(vx uint, kk byte) {
 	fmt.Println("create a random number and put it in vx")
 }
 
-func (vm *chip8) showSprite(vx byte, vy byte, nibble byte) {
+func (vm *chip8) showSprite(vx uint, vy uint, nibble byte) {
 	fmt.Println("display n byte sprite starting at i memory")
 }
 
-func (vm *chip8) skipIfPressed(vx byte) {
+func (vm *chip8) skipIfPressed(vx uint) {
 	fmt.Println("skip instruction if vx value is equal to keyboard pressed")
 }
 
-func (vm *chip8) skipIfNotPressed(vx byte) {
+func (vm *chip8) skipIfNotPressed(vx uint) {
 	fmt.Println("skip instruction if vx value is not equal to keyboard pressed")
 }
 
-func (vm *chip8) putTimerInX(vx byte) {
+func (vm *chip8) putTimerInX(vx uint) {
 	fmt.Println("put value from dst register in vx")
 }
 
-func (vm *chip8) waitForKeyPress(vx byte) {
+func (vm *chip8) waitForKeyPress(vx uint) {
 	fmt.Println("Wait for key press, store key value in vx")
 }
 
-func (vm *chip8) setDelay(vx byte) {
+func (vm *chip8) setDelay(vx uint) {
 	fmt.Println("Dt is set to vx value")
 }
 
-func (vm *chip8) setSound(vx byte) {
+func (vm *chip8) setSound(vx uint) {
 	fmt.Println("st is set to vx value")
 }
 
-func (vm *chip8) addXToI(vx byte) {
+func (vm *chip8) addXToI(vx uint) {
 	fmt.Println("vx and i are added results stored in I")
 }
 
-func (vm *chip8) loadF(vx byte) {
+func (vm *chip8) loadF(vx uint) {
 	fmt.Println("i is set to the location of hexadecimal representation ofthe vx value")
 }
 
-func (vm *chip8) loadBCD(vx byte) {
+func (vm *chip8) loadBCD(vx uint) {
 	fmt.Println("Store representation of hexadecimal vx in I")
 }
 
-func (vm *chip8) saveRegisters(vx byte) {
+func (vm *chip8) saveRegisters(vx uint) {
 	fmt.Println("store al v0 .... vx register in memory starting at I location")
 }
 
-func (vm *chip8) loadRegisters(vx byte) {
+func (vm *chip8) loadRegisters(vx uint) {
 	fmt.Println("read value from memory starting at I into register v0 through vx")
 }
 
