@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+)
 
 // := can only be used inside a function, outside we need to declare explicitly
 var hexadecimalSprites = [80]byte{
@@ -362,55 +365,129 @@ func (vm *chip8) shiftLeft(vx uint) {
 }
 
 func (vm *chip8) compareXY(vx uint, vy uint) {
-	fmt.Println("compare x y are not equals")
+	/*
+		The values of Vx and Vy are compared, and if they are not equal,
+		the program counter is increased by 2
+	*/
+	if vm.v[vx] != vm.v[vy] {
+		vm.pc += 2
+	}
+
 }
 
 func (vm *chip8) setI(address uint16) {
-	fmt.Println("set I register with vx value")
+	/*
+		The value of register I is set to address
+	*/
+	vm.i = address
 }
 
 func (vm *chip8) jumpTo(address uint16) {
-	fmt.Println("jump to specified address")
+	/*
+		The program counter is set to nnn plus the value of V0
+	*/
+	vm.pc = vm.pc + uint16(vm.v[0])
 }
 
 func (vm *chip8) random(vx uint, kk byte) {
-	fmt.Println("create a random number and put it in vx")
+	/*
+
+		The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk.
+		The results are stored in Vx
+	*/
+	random := byte(rand.Intn(255))
+	vm.v[vx] = random & kk
 }
 
 func (vm *chip8) showSprite(vx uint, vy uint, nibble byte) {
+	/*
+		The interpreter reads n bytes from memory, starting at the address stored in I.
+		These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
+		Sprites are XORed onto the existing screen. If this causes any pixels to be erased,
+		VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the
+		coordinates of the display, it wraps around to the opposite side of the screen.
+	*/
 	fmt.Println("display n byte sprite starting at i memory")
 }
 
 func (vm *chip8) skipIfPressed(vx uint) {
-	fmt.Println("skip instruction if vx value is equal to keyboard pressed")
+	/*
+		Skip next instruction if key with the value of Vx is pressed.
+		Checks the keyboard, and if the key corresponding to the value of Vx is currently in the down position
+		PC is increased by 2.
+	*/
+	if vm.keyboard[vm.v[vx]] != 0 {
+		vm.pc += 2
+	}
 }
 
 func (vm *chip8) skipIfNotPressed(vx uint) {
-	fmt.Println("skip instruction if vx value is not equal to keyboard pressed")
+	/*
+		Skip next instruction if key with the value of Vx is not pressed.
+		Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position,
+		PC is increased by 2.
+	*/
+	if vm.keyboard[vm.v[vx]] == 0 {
+		vm.pc += 2
+	}
 }
 
 func (vm *chip8) putTimerInX(vx uint) {
-	fmt.Println("put value from dst register in vx")
+
+	/*
+		The value of DT is placed into Vx.
+	*/
+	vm.v[vx] = vm.dt
 }
 
 func (vm *chip8) waitForKeyPress(vx uint) {
-	fmt.Println("Wait for key press, store key value in vx")
+	/*
+		All execution stops until a key is pressed, then the value of that key is stored in Vx
+	*/
+
+	// need to check here how t ohandle the keyboard
+	keyPressed := false
+	for i := 0; i < 16; i++ {
+		if vm.keyboard[i] != 0 {
+			vm.v[vx] = byte(i)
+			keyPressed = true
+		}
+	}
+	if keyPressed {
+		vm.pc += 2
+	}
+
 }
 
 func (vm *chip8) setDelay(vx uint) {
-	fmt.Println("Dt is set to vx value")
+	/*
+		DT is set equal to the value of Vx.
+	*/
+	vm.dt = vm.v[vx]
+
 }
 
 func (vm *chip8) setSound(vx uint) {
-	fmt.Println("st is set to vx value")
+	/*
+		ST is set equal to the value of Vx.
+	*/
+	vm.st = vm.v[vx]
 }
 
 func (vm *chip8) addXToI(vx uint) {
-	fmt.Println("vx and i are added results stored in I")
+	/*
+		The values of I and Vx are added, and the results are stored in I.
+	*/
+	vm.i = vm.i + uint16(vm.v[vx])
 }
 
 func (vm *chip8) loadF(vx uint) {
-	fmt.Println("i is set to the location of hexadecimal representation ofthe vx value")
+	/*
+		The value of I is set to the location for the hexadecimal
+		sprite corresponding to the value of Vx
+	*/
+	fmt.Println("Set sprite")
+
 }
 
 func (vm *chip8) loadBCD(vx uint) {
@@ -418,11 +495,24 @@ func (vm *chip8) loadBCD(vx uint) {
 }
 
 func (vm *chip8) saveRegisters(vx uint) {
-	fmt.Println("store al v0 .... vx register in memory starting at I location")
+	/*
+		The interpreter copies the values of registers V0 through Vx into memory,
+		starting at the address in I.
+	*/
+	x := uint16(vx)
+	for i := uint16(0); i <= x; i++ {
+		vm.memory[vm.i+i] = vm.v[i]
+	}
 }
 
 func (vm *chip8) loadRegisters(vx uint) {
-	fmt.Println("read value from memory starting at I into register v0 through vx")
+	/*
+		The interpreter reads values from memory starting at location I into registers V0 through Vx.
+	*/
+	x := uint16(vx)
+	for i := uint16(0); i <= x; i++ {
+		vm.v[i] = vm.memory[vm.i+i]
+	}
 }
 
 func (vm *chip8) writeToMem(high byte, low byte) {
