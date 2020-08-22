@@ -154,7 +154,7 @@ func (vm *chip8) step() {
 	case instruction&0xF000 == 0xC000:
 		vm.random(x, completeByte)
 	case instruction&0xF000 == 0xD000:
-		vm.showSprite(x, y, nibble)
+		vm.drawSprite(x, y, nibble)
 	case instruction&0xF0FF == 0xE09E:
 		vm.skipIfPressed(x)
 	case instruction&0xF0FF == 0xE0A1:
@@ -399,7 +399,7 @@ func (vm *chip8) random(vx uint, kk byte) {
 	vm.v[vx] = random & kk
 }
 
-func (vm *chip8) showSprite(vx uint, vy uint, nibble byte) {
+func (vm *chip8) drawSprite(vx uint, vy uint, nibble byte) {
 	/*
 		The interpreter reads n bytes from memory, starting at the address stored in I.
 		These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
@@ -407,7 +407,29 @@ func (vm *chip8) showSprite(vx uint, vy uint, nibble byte) {
 		VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the
 		coordinates of the display, it wraps around to the opposite side of the screen.
 	*/
-	fmt.Println("display n byte sprite starting at i memory")
+
+	x := uint16(vm.v[vx])
+	y := uint16(vm.v[vy])
+	n := uint16(nibble)
+
+	var xline uint16
+	var yline uint16
+	var pixel byte
+
+	for yline = 0; yline < n; y++ {
+		pixel = vm.memory[vm.i+yline]
+		for xline = 0; xline < 8; xline++ { // xline lenght is fixed
+			if pixel&(0x80>>xline) != 0 {
+				if (x + xline + ((y + yline) * 64)) < 2048 { // store in column-major order
+					if vm.display[(x+xline+((y+yline)*64))] == 1 {
+						vm.v[0xF] = 1
+					}
+					vm.display[x+xline+((y+yline)*64)] ^= 0x1
+				}
+			}
+		}
+	}
+	vm.drawScreen = true
 }
 
 func (vm *chip8) skipIfPressed(vx uint) {
@@ -486,12 +508,44 @@ func (vm *chip8) loadF(vx uint) {
 		The value of I is set to the location for the hexadecimal
 		sprite corresponding to the value of Vx
 	*/
+	// Hexadecimal font are loaded in init method to memory (0-80 array range)
+	// if we want to set the sprite 2 font address, direction we will have
+	// 2*5= 10. The 0 sprite occupies from memory[0] to memory[4], sprite 1 occupies from memory[5] to memory[9]
+	// so sprite 2 is read from memory[10]
+	vm.i = uint16(vm.v[vx]) * 0x5
 	fmt.Println("Set sprite")
 
 }
 
 func (vm *chip8) loadBCD(vx uint) {
-	fmt.Println("Store representation of hexadecimal vx in I")
+	/*
+		Store BCD representation of Vx in memory locations I, I+1, and I+2.
+		The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I,
+		the tens digit at location I+1, and the ones digit at location I+2.
+		Implementing double dabble algorithm.
+	*/
+	x := uint(vm.v[vx])
+	bcd := uint(0)
+
+	for n := 0; n < 8; n++ {
+
+		if (bcd>>0)&0xF >= 5 {
+			bcd += 3
+		}
+		if (bcd>>4)&0xF >= 5 {
+			bcd = (bcd + 3) << 4
+		}
+		if (bcd>>8)&0xF >= 5 {
+			bcd = (bcd + 3) << 8
+		}
+		// make a bit shift (some tricks to do the share shift register from double dabble algorithmn)
+		bcd = (bcd << 1) | (x >> (7 - n) & 0x1)
+	}
+
+	vm.memory[vm.i] = byte(bcd>>8) & 0xF
+	vm.memory[vm.i+1] = byte(bcd>>4) & 0xF
+	vm.memory[vm.i+2] = byte(bcd>>0) & 0xF
+
 }
 
 func (vm *chip8) saveRegisters(vx uint) {
