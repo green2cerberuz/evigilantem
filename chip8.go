@@ -574,12 +574,40 @@ func (vm *chip8) writeToMem(high byte, low byte) {
 	vm.memory[513] = low
 }
 
+func (vm *chip8) loadROM(path string) {
+	fmt.Println("Loading desired rom")
+}
+
+func (vm *chip8) setKeys() {
+	fmt.Println("Reading keys")
+}
+
 func main() {
+	/*
+		To debug chip8 commands
+		chip := chip8{}
+		chip.Initialize()
+		chip.writeToMem(0x32, 0x20)
+		fmt.Println(chip)
+		chip.step()
+	*/
+
 	chip := chip8{}
+
+	setGraphics()
+	setInputHandlers()
 	chip.Initialize()
-	chip.writeToMem(0x32, 0x20)
-	fmt.Println(chip)
-	chip.step()
+	// load chip8 rom
+	chip.loadROM("pong")
+	for {
+
+		chip.step()
+		if chip.drawScreen {
+			drawGraphics()
+		}
+		chip.setKeys()
+	}
+
 }
 
 // utilities functions
@@ -596,4 +624,16 @@ func debug(instruction uint16) {
 	fmt.Printf("Address: %x\n", address)
 	fmt.Printf("X: %x\n", x)
 	fmt.Printf("Y: %x\n", y)
+}
+
+func setGraphics() {
+	fmt.Println("Set graphic library")
+}
+
+func setInputHandlers() {
+	fmt.Println("Set input handlers")
+}
+
+func drawGraphics() {
+	fmt.Println("Drawing inside screen")
 }
