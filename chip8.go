@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 )
 
@@ -59,6 +61,8 @@ func (vm *chip8) Initialize() {
 	for i := 0; i < 80; i++ {
 		vm.memory[i] = hexadecimalSprites[i]
 	}
+	fmt.Println("Loading ROM......")
+	vm.loadROM("text.txt")
 
 }
 
@@ -92,6 +96,11 @@ func (vm *chip8) fetchOpcode() uint16 {
 	opLow := uint16(vm.memory[vm.pc+1])
 	vm.opcode = opHigh | opLow
 	vm.pc += 2
+	// To ensure not get a overflow for dummy logic
+	// remove later
+	if vm.pc > 4095 {
+		vm.pc = 0x200
+	}
 	return vm.opcode
 
 }
@@ -569,17 +578,30 @@ func (vm *chip8) loadRegisters(vx uint) {
 	}
 }
 
-func (vm *chip8) writeToMem(high byte, low byte) {
-	vm.memory[512] = high
-	vm.memory[513] = low
-}
-
-func (vm *chip8) loadROM(path string) {
-	fmt.Println("Loading desired rom")
+func (vm *chip8) loadROM(path string) error {
+	rom, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	baseSpace := 0x200 // see chip8 memory map, normally programs begin here
+	romLength := len(rom)
+	if romLength > 0x1000-baseSpace {
+		return errors.New("Too large to fit in memory")
+	}
+	for i := 0; i < romLength; i++ {
+		// load rom after 512 address
+		vm.memory[i+baseSpace] = rom[i]
+	}
+	return nil
 }
 
 func (vm *chip8) setKeys() {
 	fmt.Println("Reading keys")
+}
+
+func (vm *chip8) writeToMem(high byte, low byte) {
+	vm.memory[512] = high
+	vm.memory[513] = low
 }
 
 func main() {
@@ -598,7 +620,8 @@ func main() {
 	setInputHandlers()
 	chip.Initialize()
 	// load chip8 rom
-	chip.loadROM("pong")
+	chip.loadROM("text.txt")
+	fmt.Println(chip.memory)
 	for {
 
 		chip.step()
