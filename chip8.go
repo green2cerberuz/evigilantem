@@ -429,7 +429,7 @@ func (vm *chip8) drawSprite(vx uint, vy uint, nibble byte) {
 		pixel = vm.memory[vm.i+yline]
 		for xline = 0; xline < 8; xline++ { // xline lenght is fixed
 			if pixel&(0x80>>xline) != 0 {
-				if (x + xline + ((y + yline) * 64)) < 2048 { // store in column-major order
+				if (x + xline + ((y + yline) * 64)) < 2048 { // stored in column-major order
 					if vm.display[(x+xline+((y+yline)*64))] == 1 {
 						vm.v[0xF] = 1
 					}
@@ -536,7 +536,7 @@ func (vm *chip8) loadBCD(vx uint) {
 	x := uint(vm.v[vx])
 	bcd := uint(0)
 
-	for n := 0; n < 8; n++ {
+	for n := uint(0); n < 8; n++ {
 
 		if (bcd>>0)&0xF >= 5 {
 			bcd += 3
